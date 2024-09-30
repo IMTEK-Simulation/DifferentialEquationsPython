@@ -1,0 +1,83 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from scipy.integrate import solve_ivp
+import copy
+
+# Constants
+m = 1
+k = 1
+d = 1
+A = 0
+gamma = d / m
+beta = gamma / 2
+omega_02 = k / m
+omega = np.sqrt(omega_02 - 2 * beta**2)
+phi = 0
+
+# Initial Conditions
+x0 = 0
+v0 = 5
+
+# Time array
+t_start = 0
+t_end = 10
+t_eval = np.linspace(t_start, t_end, 100)
+
+
+def f_ext(t):
+    return A * np.cos(omega * t + phi)
+
+
+sys = 'HO'
+
+
+def dydt(t, y):
+    if sys == 'HO':             # Harmonic Oscillator
+        return [copy.copy(y[1]), -gamma * y[1] - omega_02 * y[0] + f_ext(t) / m]
+
+
+result = solve_ivp(dydt, [t_start, t_end], [x0, v0], t_eval=t_eval)
+
+# Graph erzeugen
+fig = plt.figure()
+gs = GridSpec(4, 4)
+
+ax_quiver = fig.add_subplot(gs[1:4, 0:3])
+ax_y = fig.add_subplot(gs[0, 0:3], sharex=ax_quiver)
+ax_x = fig.add_subplot(gs[1:4, 3], sharey=ax_quiver)
+
+ax_x.plot(result.t, result.y[1])
+# Rotation by 90 degrees, so switch t and y
+ax_y.plot(result.y[0], result.t)
+ax_quiver.plot(result.y[0], result.y[1])
+
+# Intervall in t und y mit linear spacing
+size = 10
+plot_density = 20
+t = np.linspace(t_start, t_end, plot_density)
+y1 = np.linspace(-size, size, plot_density)
+y2 = np.linspace(-size, size, plot_density)
+# hier kann die Inhomogenität f geändert werden
+f = f_ext(t_eval)
+# Das meshgrid für den Graphen
+Y1, Y2 = np.meshgrid(y1, y2)
+
+# Die Komponenten Tangentialvektors
+dY1 = dydt(t, [Y1, Y2])[0]
+dY2 = dydt(t, [Y1, Y2])[1]
+# norm = np.ones_like(X)          # No norm
+norm = np.sqrt(dY1**2 + dY2**2)
+norm[norm == 0] = 1
+dY1 /= norm
+dY2 /= norm
+
+# Achsenbeschriftung, Titel
+ax_quiver.set_xlabel(r'$x$')
+ax_quiver.set_ylabel(r'$y$')
+ax_x.set_xlabel(r'$t$')
+ax_y.set_ylabel(r'$t$')
+ax_quiver.quiver(Y1, Y2, dY1, dY2)
+plt.subplots_adjust(hspace=0.5, wspace=0.5)
+
+plt.show()
